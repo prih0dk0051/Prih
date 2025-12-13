@@ -1,0 +1,22 @@
+{
+  "name": "IOS Freedom",
+  "identifier": "IOS.FREEDOM",
+  "apps": [
+    {
+      "beta": true,
+      "name": "LiveContanier Nightly",
+      "bundleIdentifier": "com.hugeblack.livecontanier",
+      "developerName": "hugeblack",
+      "subtitle": "Dreamcast, Naomi and Atomiswave emulator.",
+      "version": "nightly",
+      "versionDate": "2025",
+      "versionDescription": "Bugfixes",
+      "downloadURL": "https://github.com/LiveContainer/LiveContainer/releases/download/nightly/LiveContainer.ipa",
+      "localizedDescription": "Лаучнчер позловляющий запускать приложения без их установки!.",
+      "iconURL": "https://raw.githubusercontent.com/LiveContainer/LiveContainer/main/screenshots/AppIcon1024.png",
+      "tintColor": "9b54fd",
+      "size": 8161611,
+      ]
+    }
+  ]
+}
