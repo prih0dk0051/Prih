@@ -1,16 +1,3 @@
 aiogram==3.4.1
 python-dotenv==1.0.0
 groq==0.4.1
-```
-
-### 2️⃣ Файл `Procfile` (без расширения!)
-```
-worker: python telegram_homework_bot.py
-```
-
-### 3️⃣ Файл `.gitignore`
-```
-.env
-__pycache__/
-*.db
-*.pyc
