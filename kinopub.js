@@ -1,50 +1,153 @@
 (function () {
     'use strict';
 
-    // 1. Создаем компонент Kinopub
-    function KinopubComponent(component, _object) {
-        this.search = function(object, query) {
-            // Создаем окно с кодом
-            var modal = $('<div><div style="text-align:center;padding:20px;">Введите код на <b>kino.pub/device</b></div><div class="selector" style="text-align: center; background-color: #353535; color: #ffeb3b; font-size: 3em; padding: 10px; border-radius: 10px; border: 2px solid #fff;">A1B2C3</div></div>');
+    // Твой статический токен
+    var KP_TOKEN = "00ocvi9flomjl03soaffm3xe81w5t23q";
+    var API_URL = 'https://api.kino.pub/v1/';
+
+    function KinopubAPI(component, _object) {
+        var network = new Lampa.Reguest();
+        var object = _object;
+        var select_title = '';
+
+        this.search = function (_object) {
+            object = _object;
+            select_title = object.movie.title || object.movie.name;
+            this.find();
+        };
+
+        this.find = function () {
+            var _this = this;
+            // Поиск предмета по названию
+            var url = API_URL + 'items/search?q=' + encodeURIComponent(select_title) + '&access_token=' + KP_TOKEN;
+
+            network.silent(url, function (found) {
+                if (found && found.items && found.items.length > 0) {
+                    // Ищем максимально подходящий по году или берем первый
+                    var year = (object.movie.release_date || object.movie.first_air_date || '').slice(0, 4);
+                    var exact = found.items.find(function(i) { return i.year == year; }) || found.items[0];
+                    
+                    _this.getItemDetails(exact.id);
+                } else {
+                    component.loading(false);
+                    component.emptyForQuery(select_title);
+                }
+            }, function (a, c) {
+                component.loading(false);
+                component.empty(network.errorDecode(a, c));
+            });
+        };
+
+        this.getItemDetails = function (id) {
+            var _this = this;
+            var url = API_URL + 'items/' + id + '?access_token=' + KP_TOKEN;
             
-            Lampa.Modal.open({
-                title: 'Авторизация Kinopub',
-                html: modal,
-                onBack: function() {
-                    Lampa.Modal.close();
-                    Lampa.Controller.toggle('content');
+            network.silent(url, function (data) {
+                component.loading(false);
+                if (data && data.item) {
+                    _this.buildList(data.item);
+                } else {
+                    component.empty();
                 }
             });
-            
-            // Убираем индикатор загрузки в Lampa
-            component.loading(false);
+        };
+
+        this.buildList = function (item) {
+            var filtred = [];
+
+            // Если это сериал (есть сезоны)
+            if (item.seasons) {
+                item.seasons.forEach(function (season) {
+                    season.episodes.forEach(function (episode) {
+                        filtred.push({
+                            title: 'S' + season.number + ' / Серия ' + episode.number + (episode.title ? ' - ' + episode.title : ''),
+                            quality: 'FullHD / 4K',
+                            file: episode.files[0].url.hls || episode.files[0].url.http, // Берем первую ссылку
+                            info: 'Сезон ' + season.number,
+                            img: episode.snapshot
+                        });
+                    });
+                });
+            } 
+            // Если это фильм
+            else if (item.videos) {
+                item.videos.forEach(function (v) {
+                    filtred.push({
+                        title: item.title,
+                        quality: v.files[0].quality,
+                        file: v.files[0].url.hls || v.files[0].url.http,
+                        info: item.year,
+                        img: item.posters.medium
+                    });
+                });
+            }
+
+            this.append(filtred);
+        };
+
+        this.append = function (items) {
+            component.reset();
+            component.draw(items, {
+                onEnter: function (item) {
+                    Lampa.Player.play({
+                        url: item.file,
+                        title: item.title
+                    });
+                }
+            });
+        };
+
+        this.destroy = function () {
+            network.clear();
         };
     }
 
-    // 2. Функция инициализации
-    function start() {
-        // Добавляем компонент в реестр Lampa
-        Lampa.Component.add('kinopub_source', KinopubComponent);
+    function init() {
+        Lampa.Component.add('kp_mod', function (object) {
+            var scroll = new Lampa.Scroll({ mask: true, over: true });
+            var files = new Lampa.Explorer(object);
+            var source = new KinopubAPI(this, object);
 
-        // Внедряем кнопку в правую колонку "Источник"
+            this.initialize = function () {
+                files.appendFiles(scroll.render());
+                this.search();
+            };
+
+            this.search = function () {
+                this.activity.loader(true);
+                source.search(object);
+            };
+
+            this.draw = function (items, params) {
+                this.activity.loader(false);
+                var _this = this;
+                items.forEach(function (element) {
+                    // Используем престиж-шаблон (карточка с картинкой)
+                    var html = Lampa.Template.get('online_prestige_full', element);
+                    if (element.img) html.find('img').attr('src', element.img);
+                    
+                    html.on('hover:enter', function () { params.onEnter(element); });
+                    scroll.append(html);
+                });
+            };
+
+            this.reset = function () { scroll.clear(); };
+            this.render = function () { return files.render(); };
+            this.destroy = function () { scroll.destroy(); source.destroy(); };
+        });
+
         Lampa.Listener.follow('full', function (e) {
             if (e.type == 'complite') {
                 var sources = e.data.helper.sources || [];
-                
-                // Проверяем, нет ли уже такого источника в списке
-                if (!sources.find(function(s) { return s.name == 'kinopub_source' })) {
-                    sources.push({
-                        title: 'Kinopub Код',
-                        name: 'kinopub_source',
-                        full_name: 'Kinopub',
-                        icon: '<svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z" fill="white"/></svg>'
-                    });
-                }
+                sources.push({
+                    title: 'Kinopub VIP',
+                    name: 'kp_mod',
+                    full_name: 'Kinopub'
+                });
             }
         });
     }
 
-    // 3. Запуск при готовности приложения
-    if (window.appready) start();
-    else Lampa.Events.on('app:ready', start);
+    if (window.appready) init();
+    else Lampa.Events.on('app:ready', init);
 })();
