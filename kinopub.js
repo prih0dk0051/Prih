@@ -3,10 +3,9 @@
 
     function KinopubAPI(component, _object) {
         var network = new Lampa.Reguest();
-        var kp_token = Lampa.Storage.get('kp_auth_token', '');
 
         this.openAuth = function() {
-            var modal = $('<div><div class="broadcast__text" style="text-align:center">Введите код на сайте <span style="color:#ffeb3b">kino.pub/device</span></div><div class="broadcast__device selector" style="text-align: center; background-color: #353535; color: #fff; font-size: 2em; padding: 10px; margin-top: 10px; border-radius: 5px;">ОЖИДАНИЕ...</div></div>');
+            var modal = $('<div><div class="broadcast__text" style="text-align:center;padding:20px;">Введите код на сайте <span style="color:#ffeb3b">kino.pub/device</span></div><div class="broadcast__device selector" style="text-align: center; background-color: #353535; color: #fff; font-size: 2.5em; padding: 15px; margin-top: 10px; border-radius: 10px;">ЗАГРУЗКА...</div></div>');
             
             Lampa.Modal.open({
                 title: 'Авторизация Kinopub',
@@ -17,13 +16,13 @@
                 }
             });
 
-            // Запрос кода
+            // Запрос кода (API Kinopub)
             network.quiet('https://api.service.it/oauth2/device', function(found) {
                 if (found && found.code) {
                     modal.find('.broadcast__device').text(found.code);
                 }
             }, function() {
-                Lampa.Noty.show('Ошибка подключения к API');
+                modal.find('.broadcast__device').text('ОШИБКА API');
             });
         };
 
@@ -34,10 +33,9 @@
     }
 
     function startPlugin() {
-        // Регистрация компонента
         Lampa.Component.add('kinopub_plugin', KinopubAPI);
 
-        // Инъекция в список источников (правая колонка Источник)
+        // Добавляем кнопку именно в меню "Источник"
         Lampa.Listener.follow('full', function (e) {
             if (e.type == 'complite') {
                 var sources = e.data.helper.sources || [];
@@ -48,7 +46,7 @@
                         title: 'Kinopub Код',
                         name: 'kinopub_plugin',
                         full_name: 'Kinopub',
-                        icon: '<svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z" fill="white"/></svg>'
+                        icon: '<svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z" fill="white"/></svg>'
                     });
                 }
             }
